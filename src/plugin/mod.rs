@@ -1,6 +1,9 @@
 //! Plugin runtime — WASM sandboxed extensions
 //!
 //! Plugin types: Transform, Hook, Resolver, Transport, Storage, Router
+//!
+//! Requires `plugins` feature for WASM runtime (wasmtime).
+//! Without it, plugin management works but execution is unavailable.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;

@@ -35,10 +35,10 @@ tonic = "0.12"
 prost = "0.13"
 
 # Actor model
-ractor = "0.12"
+ractor = { version = "0.12", optional = true }
 
-# WASM plugins
-wasmtime = "27"
+# WASM plugins (heavy compile — optional until needed)
+wasmtime = { version = "27", optional = true }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -67,6 +67,12 @@ bytes = "1"
 dashmap = "6"
 hex = "0.4"
 directories = "6"
+
+[features]
+default = []
+plugins = ["wasmtime"]
+actors = ["ractor"]
+full = ["plugins", "actors"]
 
 [build-dependencies]
 tonic-build = "0.12"
