@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 use crate::identity::{KeyringId, NodeId};
-use crate::crdt::HLC;
+use crate::crdt::Hlc;
 
 /// Node presence information
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -16,7 +16,7 @@ pub struct Presence {
     pub status: NodeStatus,
     pub capabilities: HashSet<String>,
     pub resources: Resources,
-    pub last_seen: HLC,
+    pub last_seen: Hlc,
     pub heartbeat: u64,
 }
 
@@ -47,7 +47,7 @@ pub struct Task {
     pub deadline: Option<chrono::DateTime<chrono::Utc>>,
     pub status: TaskStatus,
     pub created_by: NodeId,
-    pub created_at: HLC,
+    pub created_at: Hlc,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -102,7 +102,7 @@ impl Coordinator {
             status: NodeStatus::Online,
             capabilities,
             resources,
-            last_seen: HLC::now(self.node_id),
+            last_seen: Hlc::now(self.node_id),
             heartbeat: self.presence_map
                 .get(&self.node_id)
                 .map(|p| p.heartbeat + 1)

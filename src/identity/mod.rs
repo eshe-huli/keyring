@@ -7,4 +7,4 @@ mod node;
 mod keyring_id;
 
 pub use node::{NodeId, NodeIdentity};
-pub use keyring_id::{KeyringMembership, KeyringId, Role};
+pub use keyring_id::{KeyringMembership, KeyringId};

@@ -10,7 +10,7 @@
 use anyhow::Result;
 use std::collections::HashMap;
 
-use crate::identity::{KeyringId, NodeId};
+use crate::identity::NodeId;
 use crate::store::blob::BlobHash;
 use crate::store::document::DocumentId;
 

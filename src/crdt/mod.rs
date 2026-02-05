@@ -10,7 +10,7 @@ use crate::store::blob::BlobHash;
 
 /// Hybrid Logical Clock — captures causality across nodes
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub struct HLC {
+pub struct Hlc {
     /// Physical time (milliseconds since epoch)
     pub physical: u64,
     /// Logical counter (monotonically increasing)
@@ -19,7 +19,7 @@ pub struct HLC {
     pub node: NodeId,
 }
 
-impl HLC {
+impl Hlc {
     pub fn now(node: NodeId) -> Self {
         let physical = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -34,28 +34,28 @@ impl HLC {
     }
 
     /// Merge with a received HLC (take max + increment)
-    pub fn merge(&self, other: &HLC, node: NodeId) -> Self {
+    pub fn merge(&self, other: &Hlc, node: NodeId) -> Self {
         let physical = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_millis() as u64;
 
         if physical > self.physical && physical > other.physical {
-            HLC { physical, logical: 0, node }
+            Hlc { physical, logical: 0, node }
         } else if self.physical == other.physical {
-            HLC {
+            Hlc {
                 physical: self.physical,
                 logical: self.logical.max(other.logical) + 1,
                 node,
             }
         } else if self.physical > other.physical {
-            HLC {
+            Hlc {
                 physical: self.physical,
                 logical: self.logical + 1,
                 node,
             }
         } else {
-            HLC {
+            Hlc {
                 physical: other.physical,
                 logical: other.logical + 1,
                 node,
@@ -70,7 +70,7 @@ pub struct Change {
     pub hash: BlobHash,
     pub parents: Vec<BlobHash>,
     pub author: NodeId,
-    pub timestamp: HLC,
+    pub timestamp: Hlc,
     pub operation: Vec<u8>, // Serialized CRDT operation
     pub signature: Vec<u8>, // Ed25519 signature
 }

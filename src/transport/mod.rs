@@ -7,5 +7,4 @@ mod stubs;
 mod types;
 
 pub use quic::QuicTransport;
-pub use stubs::*;
-pub use types::{Transport, Connection, Listener, PeerAddr, SyncFrame, FrameType};
+pub use types::{Transport, Connection, Listener};

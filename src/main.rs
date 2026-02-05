@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Keyring — Distributed Agent Mesh Runtime
 //!
 //! One binary. Zero external dependencies. Zero config to start.
