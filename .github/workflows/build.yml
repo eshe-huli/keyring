@@ -1,0 +1,115 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: keyring
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: keyring-linux-x86_64
+            use_cross: false
+
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            artifact: keyring-linux-aarch64
+            use_cross: true
+
+          - target: x86_64-apple-darwin
+            os: macos-13          # Intel runner
+            artifact: keyring-macos-x86_64
+            use_cross: false
+
+          - target: aarch64-apple-darwin
+            os: macos-14          # Apple Silicon runner
+            artifact: keyring-macos-aarch64
+            use_cross: false
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "27.x"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install cross (Linux aarch64)
+        if: matrix.use_cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
+      - name: Build release binary
+        run: |
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Rename binary
+        run: |
+          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }} ${{ matrix.artifact }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lah artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v0.1.0
+          name: "Keyring v0.1.0"
+          body: |
+            Initial release of Keyring — distributed agent mesh runtime.
+
+            ## Binaries
+            | Platform | File |
+            |----------|------|
+            | Linux x86_64 | `keyring-linux-x86_64` |
+            | Linux aarch64 | `keyring-linux-aarch64` |
+            | macOS x86_64 | `keyring-macos-x86_64` |
+            | macOS aarch64 | `keyring-macos-aarch64` |
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/keyring-linux-x86_64
+            artifacts/keyring-linux-aarch64
+            artifacts/keyring-macos-x86_64
+            artifacts/keyring-macos-aarch64
+          generate_release_notes: false
