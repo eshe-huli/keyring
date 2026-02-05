@@ -1,0 +1,243 @@
+syntax = "proto3";
+
+package keyring;
+
+// ─── Keyring gRPC Service ───
+// Local API for agents and CLIs to talk to the Keyring daemon.
+
+service Keyring {
+  // ─── Documents ───
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+  rpc Delete(DeleteRequest) returns (DeleteResponse);
+  rpc List(ListRequest) returns (stream DocumentMeta);
+  rpc Watch(WatchRequest) returns (stream ChangeEvent);
+
+  // ─── Sync ───
+  rpc SyncNow(SyncRequest) returns (SyncResponse);
+  rpc SyncStatus(Empty) returns (SyncStatusResponse);
+
+  // ─── Coordination ───
+  rpc GetPresence(Empty) returns (stream PresenceEvent);
+  rpc SubmitTask(TaskRequest) returns (TaskResponse);
+  rpc ClaimTask(ClaimRequest) returns (TaskResponse);
+  rpc CompleteTask(CompleteRequest) returns (Empty);
+
+  // ─── Mesh ───
+  rpc Peers(Empty) returns (PeersResponse);
+  rpc JoinKeyring(JoinRequest) returns (JoinResponse);
+  rpc LeaveKeyring(LeaveRequest) returns (Empty);
+
+  // ─── Plugins ───
+  rpc InstallPlugin(PluginRequest) returns (Empty);
+  rpc ListPlugins(Empty) returns (PluginsResponse);
+
+  // ─── Admin ───
+  rpc NodeInfo(Empty) returns (NodeInfoResponse);
+  rpc Metrics(Empty) returns (MetricsResponse);
+}
+
+// ─── Common ───
+
+message Empty {}
+
+// ─── Document Types ───
+
+message PutRequest {
+  string keyring_id = 1;
+  string doc_type = 2;      // file, event, register, counter, set, map, queue
+  bytes data = 3;
+  map<string, string> metadata = 4;
+  repeated string tags = 5;
+}
+
+message PutResponse {
+  string document_id = 1;
+  string hash = 2;
+}
+
+message GetRequest {
+  string document_id = 1;
+}
+
+message GetResponse {
+  DocumentMeta meta = 1;
+  bytes data = 2;
+}
+
+message DeleteRequest {
+  string document_id = 1;
+}
+
+message DeleteResponse {
+  bool deleted = 1;
+}
+
+message ListRequest {
+  string keyring_id = 1;
+  string doc_type = 2;       // optional filter
+  repeated string tags = 3;  // optional filter
+  uint32 limit = 4;
+  uint32 offset = 5;
+}
+
+message DocumentMeta {
+  string id = 1;
+  string doc_type = 2;
+  string keyring_id = 3;
+  repeated string tags = 4;
+  map<string, string> metadata = 5;
+  int64 created_at = 6;   // unix timestamp ms
+  int64 updated_at = 7;
+  string author = 8;       // node ID hex
+  uint64 size = 9;
+}
+
+message WatchRequest {
+  string keyring_id = 1;    // optional: watch specific keyring
+  string doc_type = 2;      // optional: filter by type
+}
+
+message ChangeEvent {
+  string document_id = 1;
+  string change_hash = 2;
+  string author = 3;
+  int64 timestamp = 4;
+  string operation = 5;     // human-readable description
+}
+
+// ─── Sync Types ───
+
+message SyncRequest {
+  string peer_id = 1;       // optional: sync with specific peer
+}
+
+message SyncResponse {
+  uint32 documents_synced = 1;
+  uint32 changes_sent = 2;
+  uint32 changes_received = 3;
+  uint64 bytes_transferred = 4;
+}
+
+message SyncStatusResponse {
+  repeated PeerSyncStatus peers = 1;
+}
+
+message PeerSyncStatus {
+  string node_id = 1;
+  string name = 2;
+  int64 last_sync = 3;
+  string status = 4;        // synced, syncing, behind, unreachable
+  uint32 pending_changes = 5;
+}
+
+// ─── Coordination Types ───
+
+message PresenceEvent {
+  string node_id = 1;
+  string name = 2;
+  string status = 3;        // online, offline, busy, away
+  repeated string capabilities = 4;
+  float cpu_usage = 5;
+  float memory_gb = 6;
+  float disk_gb = 7;
+  int64 last_seen = 8;
+}
+
+message TaskRequest {
+  string task_type = 1;
+  repeated string requires = 2;
+  repeated string prefers = 3;
+  bytes payload = 4;
+  string priority = 5;       // low, normal, high, critical
+  int64 deadline = 6;        // optional: unix timestamp ms
+}
+
+message TaskResponse {
+  string task_id = 1;
+  string status = 2;
+  string assigned_to = 3;    // node ID
+}
+
+message ClaimRequest {
+  string task_id = 1;
+}
+
+message CompleteRequest {
+  string task_id = 1;
+  bytes result = 2;
+  string error = 3;          // empty if success
+}
+
+// ─── Mesh Types ───
+
+message PeersResponse {
+  repeated PeerInfo peers = 1;
+}
+
+message PeerInfo {
+  string node_id = 1;
+  string name = 2;
+  string addr = 3;
+  string transport = 4;
+  string status = 5;
+  int64 connected_since = 6;
+}
+
+message JoinRequest {
+  string keyring_id = 1;
+  string invite_token = 2;
+}
+
+message JoinResponse {
+  string keyring_id = 1;
+  string keyring_name = 2;
+  uint32 member_count = 3;
+}
+
+message LeaveRequest {
+  string keyring_id = 1;
+}
+
+// ─── Plugin Types ───
+
+message PluginRequest {
+  string name = 1;
+  bytes wasm = 2;
+  repeated string permissions = 3;
+}
+
+message PluginsResponse {
+  repeated PluginInfo plugins = 1;
+}
+
+message PluginInfo {
+  string name = 1;
+  string version = 2;
+  string plugin_type = 3;
+  repeated string permissions = 4;
+  bool enabled = 5;
+}
+
+// ─── Admin Types ───
+
+message NodeInfoResponse {
+  string node_id = 1;
+  string name = 2;
+  string version = 3;
+  int64 uptime_seconds = 4;
+  repeated string keyrings = 5;
+  repeated string transports = 6;
+  uint32 document_count = 7;
+  uint32 peer_count = 8;
+}
+
+message MetricsResponse {
+  uint64 documents_total = 1;
+  uint64 blobs_total = 2;
+  uint64 storage_bytes = 3;
+  uint64 sync_operations = 4;
+  uint64 changes_merged = 5;
+  uint64 bytes_sent = 6;
+  uint64 bytes_received = 7;
+}
